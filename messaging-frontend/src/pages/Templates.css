@@ -1,0 +1,84 @@
+.templates-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.template-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.template-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.template-header h3 {
+  margin: 0;
+  color: #333;
+  flex: 1;
+}
+
+.template-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.template-content {
+  flex: 1;
+  margin-bottom: 1rem;
+}
+
+.template-content p {
+  color: #666;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.template-variables {
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 1rem;
+  word-break: break-all;
+}
+
+.template-footer {
+  font-size: 0.875rem;
+  color: #999;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.help-text {
+  display: block;
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 0.25rem;
+  font-weight: normal;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  background: white;
+  border-radius: 8px;
+  color: #666;
+}

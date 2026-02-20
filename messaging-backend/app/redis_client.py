@@ -1,0 +1,15 @@
+"""
+Redis client for caching and queue management
+"""
+import redis
+from app.core.config import settings
+
+redis_client = redis.from_url(
+    settings.REDIS_URL,
+    decode_responses=True
+)
+
+
+def get_redis():
+    """Get Redis client"""
+    return redis_client

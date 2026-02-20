@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: messaging-postgres-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-messaging_db}
+      POSTGRES_USER: ${POSTGRES_USER:-messaging_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-messaging_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - messaging-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-messaging_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: messaging-redis-prod
+    volumes:
+      - redis_data:/data
+    networks:
+      - messaging-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Service
+  backend:
+    build:
+      context: ./messaging-backend
+      dockerfile: Dockerfile
+    container_name: messaging-backend-prod
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      - MESSAGE_PROVIDER_API_KEY=${MESSAGE_PROVIDER_API_KEY}
+      - MESSAGE_PROVIDER_API_URL=${MESSAGE_PROVIDER_API_URL}
+      - MESSAGE_PROVIDER_WEBHOOK_SECRET=${MESSAGE_PROVIDER_WEBHOOK_SECRET}
+    networks:
+      - messaging-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./messaging-backend
+      dockerfile: Dockerfile
+    container_name: messaging-celery-worker-prod
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    networks:
+      - messaging-network
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+
+  # Frontend Service (Production)
+  frontend:
+    build:
+      context: ./messaging-frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+    container_name: messaging-frontend-prod
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - messaging-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  messaging-network:
+    driver: bridge
