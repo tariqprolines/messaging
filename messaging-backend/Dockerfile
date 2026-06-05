@@ -1,23 +1,36 @@
 FROM python:3.11-slim
 
-WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    curl \
+# Create non-root user and install system deps
+RUN useradd -m appuser && \
+    apt-get update && apt-get install -y --no-install-recommends \
+        gcc \
+        libpq-dev \
+        postgresql-client \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
+WORKDIR /app
+
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy project
 COPY . .
 
-# Expose port
+# Change ownership
+RUN chown -R appuser:appuser /app
+
+# Switch user
+USER appuser
+
 EXPOSE 8000
 
-# Run the application
+# Production-grade server
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
